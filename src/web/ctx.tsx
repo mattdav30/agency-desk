@@ -1,14 +1,29 @@
-import { createContext, useCallback, useContext, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { tasks as seedTasks } from "./seed";
+import { api, type Client, type Report, type State, type Task } from "./api";
 
-export type Task = { id: number; title: string; client: string; time: string; done: boolean };
+export type { Client, Report, Task } from "./api";
+export type ClientInput = { name: string; channels: string; note: string };
+export type TaskInput = { title: string; clientId: number | null; dueDate?: string | null };
+export type ReportInput = { name: string; clientId: number | null; clientLabel: string; frequency: Report["frequency"]; dueTime: string; dueDay: number | null };
 
 type Ctx = {
+  ready: boolean;
+  today: string;
+  clients: Client[];
   tasks: Task[];
-  toggleTask: (id: number) => void;
-  addTask: (title: string, client?: string) => void;
-  removeTask: (id: number) => void;
+  reports: Report[];
+  toggleTask: (id: number) => Promise<void>;
+  addTask: (input: TaskInput) => Promise<boolean>;
+  updateTask: (id: number, input: TaskInput) => Promise<boolean>;
+  removeTask: (id: number) => Promise<void>;
+  addClient: (input: ClientInput) => Promise<Client | null>;
+  updateClient: (id: number, input: ClientInput) => Promise<boolean>;
+  removeClient: (id: number) => Promise<boolean>;
+  addReport: (input: ReportInput) => Promise<boolean>;
+  updateReport: (id: number, input: ReportInput) => Promise<boolean>;
+  removeReport: (id: number) => Promise<void>;
+  setReportDone: (id: number, done: boolean) => Promise<void>;
   notify: (message: string) => void;
   openChat: (prefill?: string) => void;
   chatOpen: boolean;
@@ -21,8 +36,11 @@ type Ctx = {
 const AppCtx = createContext<Ctx>(null as unknown as Ctx);
 export const useApp = () => useContext(AppCtx);
 
+const byDue = (a: Report, b: Report) => a.nextDue.localeCompare(b.nextDue) || a.at.localeCompare(b.at);
+
 export function AppProvider({ children }: { children: ReactNode }) {
-  const [tasks, setTasks] = useState<Task[]>(seedTasks);
+  const [data, setData] = useState<State>({ today: "", clients: [], tasks: [], reports: [] });
+  const [ready, setReady] = useState(false);
   const [toasts, setToasts] = useState<{ id: number; text: string }[]>([]);
   const [chatOpen, setChatOpen] = useState(false);
   const [chatPrefill, setChatPrefill] = useState("");
@@ -34,11 +52,93 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 4200);
   }, []);
 
+  const load = useCallback(async () => {
+    try { setData(await api<State>("/state")); }
+    catch { notify("Your data is taking a moment to load. Refresh to try again."); }
+    finally { setReady(true); }
+  }, [notify]);
+  useEffect(() => { load(); }, [load]);
+
+  const set = (patch: Partial<State>) => setData((d) => ({ ...d, ...patch }));
+
+  // Run a save. On a problem, show the message and return the fallback.
+  async function attempt<T>(fn: () => Promise<T>, fallback: T): Promise<T> {
+    try { return await fn(); } catch (e) { notify((e as Error).message); return fallback; }
+  }
+
   const value: Ctx = {
-    tasks, notify, chatOpen, chatPrefill, model, setModel,
-    toggleTask: (id) => setTasks((l) => l.map((t) => (t.id === id ? { ...t, done: !t.done } : t))),
-    addTask: (title, client = "General") => setTasks((l) => [...l, { id: Date.now(), title, client, time: "Today", done: false }]),
-    removeTask: (id) => setTasks((l) => l.filter((t) => t.id !== id)),
+    ready, today: data.today, clients: data.clients, tasks: data.tasks, reports: data.reports,
+    notify, chatOpen, chatPrefill, model, setModel,
+
+    toggleTask: async (id) => {
+      const cur = data.tasks.find((t) => t.id === id);
+      if (!cur) return;
+      const next = !cur.done;
+      set({ tasks: data.tasks.map((t) => (t.id === id ? { ...t, done: next } : t)) });
+      try { await api(`/tasks/${id}`, "PATCH", { done: next }); }
+      catch { set({ tasks: data.tasks }); notify("That tick could not save. Try again."); }
+    },
+    addTask: (input) => attempt(async () => {
+      const t = await api<Task>("/tasks", "POST", input);
+      setData((d) => ({ ...d, tasks: [...d.tasks, t] }));
+      return true;
+    }, false),
+    updateTask: (id, input) => attempt(async () => {
+      const t = await api<Task>(`/tasks/${id}`, "PATCH", input);
+      setData((d) => ({ ...d, tasks: d.tasks.map((x) => (x.id === id ? t : x)) }));
+      return true;
+    }, false),
+    removeTask: async (id) => {
+      const before = data.tasks;
+      set({ tasks: before.filter((t) => t.id !== id) });
+      try { await api(`/tasks/${id}`, "DELETE"); }
+      catch { set({ tasks: before }); notify("That task could not be deleted. Try again."); }
+    },
+
+    addClient: (input) => attempt(async () => {
+      const c = await api<Client>("/clients", "POST", input);
+      setData((d) => ({ ...d, clients: [...d.clients, c] }));
+      return c;
+    }, null),
+    updateClient: (id, input) => attempt(async () => {
+      const c = await api<Client>(`/clients/${id}`, "PATCH", input);
+      setData((d) => ({
+        ...d,
+        clients: d.clients.map((x) => (x.id === id ? c : x)),
+        tasks: d.tasks.map((t) => (t.clientId === id ? { ...t, client: c.name } : t)),
+        reports: d.reports.map((r) => (r.clientId === id ? { ...r, client: c.name } : r)),
+      }));
+      return true;
+    }, false),
+    removeClient: (id) => attempt(async () => {
+      await api(`/clients/${id}`, "DELETE");
+      await load();
+      return true;
+    }, false),
+
+    addReport: (input) => attempt(async () => {
+      const r = await api<Report>("/reports", "POST", input);
+      setData((d) => ({ ...d, reports: [...d.reports, r].sort(byDue) }));
+      return true;
+    }, false),
+    updateReport: (id, input) => attempt(async () => {
+      const r = await api<Report>(`/reports/${id}`, "PATCH", input);
+      setData((d) => ({ ...d, reports: d.reports.map((x) => (x.id === id ? r : x)).sort(byDue) }));
+      return true;
+    }, false),
+    removeReport: async (id) => {
+      const before = data.reports;
+      set({ reports: before.filter((r) => r.id !== id) });
+      try { await api(`/reports/${id}`, "DELETE"); }
+      catch { set({ reports: before }); notify("That report could not be deleted. Try again."); }
+    },
+    setReportDone: async (id, done) => {
+      try {
+        const r = await api<Report>(`/reports/${id}/done`, "POST", { done });
+        setData((d) => ({ ...d, reports: d.reports.map((x) => (x.id === id ? r : x)).sort(byDue) }));
+      } catch { notify("That mark could not save. Try again."); }
+    },
+
     openChat: (prefill = "") => { setChatPrefill(prefill); setChatOpen(true); },
     closeChat: () => setChatOpen(false),
   };

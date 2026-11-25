@@ -6,7 +6,9 @@ import { useApp } from "../ctx";
 import { Bar, Card, CountUp, Reveal } from "../ui";
 import { HeroField } from "../HeroField";
 import { MemoryMap } from "../MemoryMap";
-import { adSpend, aiModels, clients, connectors, emails, news as seedNews, newsTopics as seedTopics, reportsDue } from "../seed";
+import { adSpend, aiModels, connectors, emails, news as seedNews, newsTopics as seedTopics } from "../seed";
+import { TaskForm } from "../forms";
+import { TaskList } from "../tasklist";
 import { dueLabel, greeting, money, monthProgress, paceStatus } from "../util";
 import { href } from "../hooks";
 
@@ -21,9 +23,8 @@ const connectorHint: Record<string, string> = {
 
 export function Overview() {
   const now = useMemo(() => new Date(), []);
-  const { tasks, toggleTask, addTask, notify, openChat } = useApp();
+  const { tasks, clients, reports, today, ready, notify, openChat } = useApp();
   const [adding, setAdding] = useState(false);
-  const [draft, setDraft] = useState("");
   const [topics, setTopics] = useState(seedTopics);
   const [topic, setTopic] = useState(seedTopics[0]);
   const [addingTopic, setAddingTopic] = useState(false);
@@ -31,16 +32,12 @@ export function Overview() {
   const [saved, setSaved] = useState<Set<number>>(new Set());
 
   const open = tasks.filter((t) => !t.done).length;
-  const dueToday = reportsDue.filter((r) => r.days === 0).length;
+  const dueToday = reports.filter((r) => r.days === 0 && !r.doneToday).length;
+  const todays = tasks.filter((t) => (t.done ? t.dueDate === today : !t.dueDate || t.dueDate <= today));
   const waiting = emails.filter((e) => e.unread).length;
   const cap = config.monthlySpendCapUsd;
   const expected = monthProgress(now);
 
-  const submitTask = (e: FormEvent) => {
-    e.preventDefault();
-    if (draft.trim()) { addTask(draft.trim()); notify("Task added for today. Saving to your account arrives in Phase 2."); }
-    setDraft(""); setAdding(false);
-  };
   const submitTopic = (e: FormEvent) => {
     e.preventDefault();
     const t = topicDraft.trim();
@@ -64,7 +61,7 @@ export function Overview() {
             <CountUp to={open} /> open tasks, <CountUp to={dueToday} /> {dueToday === 1 ? "report" : "reports"} due today and <CountUp to={waiting} /> waiting emails.
           </p>
         </Reveal>
-        <Reveal delay={0.3}><p className="sample">Sample data shown. Live data arrives in later phases.</p></Reveal>
+        <Reveal delay={0.3}><p className="sample">Clients, tasks and reports are saved. Ad spend, news and email show sample data until their phases.</p></Reveal>
       </section>
 
       <div className="grid">
@@ -97,16 +94,21 @@ export function Overview() {
         </Card>
 
         <Card title="Reports due" label="This week" delay={0.16} action={<a className="more" href={href("reports")}>All reports</a>}>
-          <ul className="list">
-            {reportsDue.map((r) => (
-              <li key={r.id} className={r.today ? "hot" : ""}>
-                <a className="row-btn" href={href("reports")}>
-                  <span><strong>{r.name}</strong><span className="muted">{r.client}</span></span>
-                  <span className="when"><Icon name="clock" size={14} />{dueLabel(now, r.days, r.at)}</span>
-                </a>
-              </li>
-            ))}
-          </ul>
+          {reports.length ? (
+            <ul className="list">
+              {reports.slice(0, 5).map((r) => {
+                const hot = r.days === 0 && !r.doneToday;
+                return (
+                  <li key={r.id} className={hot ? "hot" : ""}>
+                    <a className="row-btn" href={href("reports")}>
+                      <span><strong>{r.name}</strong><span className="muted">{r.client || "No client"}</span></span>
+                      <span className="when"><Icon name="clock" size={14} />{r.doneToday && r.days > 0 ? "Done, next " : ""}{dueLabel(now, r.days, r.at)}</span>
+                    </a>
+                  </li>
+                );
+              })}
+            </ul>
+          ) : <p className="empty">{ready ? "No reports yet. Add one on the Reports page." : "Loading"}</p>}
         </Card>
 
         <Card title="Memory map" label={`${clients.length} clients`} className="wide" delay={0.05} tilt={false}>
@@ -114,26 +116,9 @@ export function Overview() {
         </Card>
 
         <Card title="Today" label={`${open} open`} delay={0.1}>
-          <ul className="list">
-            <AnimatePresence initial={false}>
-              {tasks.map((t) => (
-                <motion.li key={t.id} layout initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.3 }}>
-                  <label className="task">
-                    <input type="checkbox" checked={t.done} onChange={() => toggleTask(t.id)} />
-                    <span className="box"><Icon name="check" size={14} /></span>
-                    <span className={t.done ? "done" : ""}><strong>{t.title}</strong><span className="muted">{t.client}</span></span>
-                  </label>
-                  <span className="when">{t.time}</span>
-                </motion.li>
-              ))}
-            </AnimatePresence>
-          </ul>
+          <TaskList tasks={todays} empty={ready ? "Nothing on for today. Add a task to start." : "Loading"} />
           {adding ? (
-            <form className="inline-form" onSubmit={submitTask}>
-              <input autoFocus value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="Task name" aria-label="Task name" />
-              <button className="btn small amber">Add</button>
-              <button type="button" className="btn small" onClick={() => setAdding(false)}>Cancel</button>
-            </form>
+            <TaskForm onDone={() => setAdding(false)} />
           ) : (
             <button className="btn" onClick={() => setAdding(true)}><Icon name="plus" size={16} />Add task</button>
           )}

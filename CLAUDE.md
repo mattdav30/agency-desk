@@ -45,13 +45,13 @@ Personal agency workspace and AI assistant (Jarvis) for Matt. Full spec: `AGENCY
 
 0 Setup. 1 Home screen with sample data. 2 Clients, tasks and reports. 3 Ad spend (CSV upload, R2). 4 Jarvis and multi model AI through OpenRouter, spend cap, `ai_usage` logging. 5 News radar (weekday cron `50 20 * * 0-4` UTC). 6 Inbox (Gmail and Outlook, plan with Matt first). 7 Phone app.
 
-Status: Phases 0, 1 and 1.5 (3D and motion pass) done. Next is Phase 2, once Matt gives the go ahead.
+Status: Phases 0, 1, 1.5 and 2 done. Phase 2 (clients, tasks, reports in D1) awaits Matt's check. Next is Phase 3, once Matt gives the go ahead.
 
 ## Commands
 
 - `npm run build` typechecks and builds. `npm run deploy` builds and deploys.
 - `npm run db:migrate:remote` applies D1 migrations to the live database.
-- Sample data for the UI lives in `src/web/seed.ts` until each phase wires real D1 data.
+- Clients, tasks and reports are live in D1 (`/api/state` plus CRUD routes in `src/worker/index.ts`, schedule maths in `src/shared/schedule.ts`). Ad spend, news and email still use sample data in `src/web/seed.ts` until their phases.
 
 ## Front end structure (Phase 1.5)
 
