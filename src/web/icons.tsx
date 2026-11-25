@@ -11,9 +11,13 @@ const paths: Record<string, ReactNode> = {
   close: <path d="M6 6l12 12M18 6L6 18" />,
   arrow: <path d="M7 17L17 7M9 7h8v8" />,
   pen: <path d="M4 20l4-1 11-11-3-3L5 16l-1 4z" />,
+  mail: <><rect x="3" y="5" width="18" height="14" rx="2" /><path d="M3 7l9 6 9-6" /></>,
+  upload: <path d="M12 16V4M7 9l5-5 5 5M5 20h14" />,
+  trash: <path d="M5 7h14M10 7V4h4v3M7 7l1 13h8l1-13" />,
+  back: <path d="M19 12H5M11 6l-6 6 6 6" />,
   bookmark: <path d="M7 4h10v16l-5-4-5 4z" />,
 };
 
-export function Icon({ name, size = 18 }: { name: keyof typeof paths; size?: number }) {
-  return <svg {...base} width={size} height={size}>{paths[name]}</svg>;
+export function Icon({ name, size = 18, filled = false }: { name: keyof typeof paths; size?: number; filled?: boolean }) {
+  return <svg {...base} width={size} height={size} fill={filled ? "currentColor" : "none"}>{paths[name]}</svg>;
 }

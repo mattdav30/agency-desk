@@ -5,6 +5,6 @@ export default defineConfig({
   root: "src/web",
   publicDir: "../../public",
   plugins: [react()],
-  build: { outDir: "../../dist/client", emptyOutDir: true },
+  build: { chunkSizeWarningLimit: 1000, outDir: "../../dist/client", emptyOutDir: true },
   server: { proxy: { "/api": "http://localhost:8787" } },
 });
