@@ -21,7 +21,7 @@ Local secrets go in `.dev.vars` (never committed).
 npx wrangler login
 npx wrangler d1 create agency-desk          # copy database_id into wrangler.jsonc
 npx wrangler kv namespace create KV         # copy id into wrangler.jsonc
-npx wrangler r2 bucket create agency-desk-files
+# R2 bucket (agency-desk-files) is added in Phase 3
 npm run db:migrate:remote
 ```
 
