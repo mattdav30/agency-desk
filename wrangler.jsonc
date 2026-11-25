@@ -13,14 +13,11 @@
     {
       "binding": "DB",
       "database_name": "agency-desk",
-      "database_id": "REPLACE_WITH_D1_ID",
+      "database_id": "f2eb9f6a-408d-4187-a49b-37555dab8724",
       "migrations_dir": "migrations"
     }
   ],
   "kv_namespaces": [
-    { "binding": "KV", "id": "REPLACE_WITH_KV_ID" }
-  ],
-  "r2_buckets": [
-    { "binding": "FILES", "bucket_name": "agency-desk-files" }
+    { "binding": "KV", "id": "438baa772aba445193ac9a8283593cc0" }
   ]
 }

@@ -1,11 +1,10 @@
 import { useEffect, useState } from "react";
 
-type Health = { ok: boolean; checks: { db: boolean; kv: boolean; files: boolean } };
+type Health = { ok: boolean; checks: { db: boolean; kv: boolean } };
 
 const rows: [keyof Health["checks"], string][] = [
   ["db", "Database"],
   ["kv", "Settings store"],
-  ["files", "File storage"],
 ];
 
 export function App() {
