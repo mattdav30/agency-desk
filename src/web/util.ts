@@ -10,7 +10,7 @@ export function paceStatus(used: number, expected: number) {
 }
 
 export function dueLabel(now: Date, days: number, at: string) {
-  if (days === 0) return `Today, ${at}`;
+  if (days === 0) return at ? `Today, ${at}` : "Today";
   const d = new Date(now);
   d.setDate(d.getDate() + days);
   return d.toLocaleDateString("en-AU", { weekday: "long", day: "numeric", month: "long" });

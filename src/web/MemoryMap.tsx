@@ -1,6 +1,6 @@
 import { Component, lazy, Suspense, useRef, type ReactNode } from "react";
 import { useInView } from "framer-motion";
-import { clients } from "./seed";
+import { useApp } from "./ctx";
 import { useIsMobile, useReduced, href } from "./hooks";
 
 // The 3D scene (three.js) loads only when the map nears the screen.
@@ -18,10 +18,11 @@ function Poster({ text }: { text: string }) {
 
 export function MemoryMap({ onOpen }: { onOpen?: (name: string) => void }) {
   const ref = useRef<HTMLDivElement>(null);
+  const { clients } = useApp();
   const near = useInView(ref, { once: true, margin: "200px" });
   const mobile = useIsMobile();
   const reduced = useReduced();
-  const names = [...clients, "Inbox"];
+  const names = [...clients.map((c) => c.name), "Inbox"];
 
   return (
     <div>
@@ -33,7 +34,7 @@ export function MemoryMap({ onOpen }: { onOpen?: (name: string) => void }) {
             </Suspense>
           </Boundary>
         ) : <Poster text="Memory map" />}
-        <p className="scene-hint label">{mobile ? "Drag to spin. Tap a node." : "Drag to spin. Click a node."}</p>
+        <p className="scene-hint label">{mobile ? "Swipe sideways to spin. Tap a node." : "Drag to spin. Click a node."}</p>
       </div>
       <ul className="chips map-chips">
         {names.map((n) => (

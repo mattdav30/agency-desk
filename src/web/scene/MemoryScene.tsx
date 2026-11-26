@@ -1,5 +1,5 @@
-import { useMemo, useRef, useState } from "react";
-import { Canvas, useFrame } from "@react-three/fiber";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Html, OrbitControls } from "@react-three/drei";
 import * as THREE from "three";
 
@@ -50,6 +50,9 @@ function Orb({ mobile, reduced }: { mobile: boolean; reduced: boolean }) {
 function Constellation({ names, onOpen, mobile, reduced }: Props) {
   const [hover, setHover] = useState<string | null>(null);
   const nodeRefs = useRef<(THREE.Group | null)[]>([]);
+  const labelRefs = useRef<(HTMLButtonElement | null)[]>([]);
+  const shown = useRef<boolean[]>([]);
+  const wp = useMemo(() => new THREE.Vector3(), []);
   const lineGeo = useRef<THREE.BufferGeometry>(null);
   const pulseGeo = useRef<THREE.BufferGeometry>(null);
   const pulseT = useRef<number[]>([]);
@@ -73,12 +76,32 @@ function Constellation({ names, onOpen, mobile, reduced }: Props) {
     return [x, z0 * Math.sin(o.tilt), z0 * Math.cos(o.tilt)] as const;
   };
 
-  useFrame(({ clock }, dt) => {
+  // Labels on the far side of the orb fade out, so names never stack on top of each other.
+  const fadeLabel = (i: number, camera: THREE.Camera, camDist: number) => {
+    const node = nodeRefs.current[i], el = labelRefs.current[i];
+    if (!node || !el) return;
+    node.getWorldPosition(wp);
+    const behind = wp.distanceTo(camera.position) - camDist; // above 0 means behind the orb centre
+    const k = THREE.MathUtils.clamp((behind - 0.1) / 1.5, 0, 1);
+    const opacity = 1 - k * k * (3 - 2 * k);
+    el.style.opacity = opacity.toFixed(2);
+    const visible = opacity > 0.25;
+    if (shown.current[i] !== visible) {
+      shown.current[i] = visible;
+      el.style.pointerEvents = visible ? "auto" : "none";
+      el.tabIndex = visible ? 0 : -1;
+      el.setAttribute("aria-hidden", visible ? "false" : "true");
+    }
+  };
+
+  useFrame(({ clock, camera }, dt) => {
     const t = reduced ? 0 : clock.elapsedTime;
+    const camDist = camera.position.length();
     orbits.forEach((o, i) => {
       const [x, y, z] = place(o, t);
       nodeRefs.current[i]?.position.set(x, y, z);
       linePos.set([0, 0, 0, x, y, z], i * 6);
+      fadeLabel(i, camera, camDist);
       for (let k = 0; k < pulsesPer; k++) {
         const idx = i * pulsesPer + k;
         if (!reduced) pulseT.current[idx] = (pulseT.current[idx] + dt * (0.22 + (i % 3) * 0.06)) % 1;
@@ -133,7 +156,7 @@ function Constellation({ names, onOpen, mobile, reduced }: Props) {
               <meshBasicMaterial color={o.inbox ? AMBER : BLUE} transparent opacity={on ? 0.3 : 0.12} blending={THREE.AdditiveBlending} depthWrite={false} />
             </mesh>
             <Html center position={[0, 0.38, 0]} zIndexRange={[10, 0]}>
-              <button type="button" className={`node-label ${on ? "on" : ""} ${o.inbox ? "inbox" : ""}`} onClick={() => onOpen(o.name)} onPointerEnter={() => setHover(o.name)} onPointerLeave={() => setHover(null)}>
+              <button type="button" ref={(el) => { labelRefs.current[i] = el; }} className={`node-label ${on ? "on" : ""} ${o.inbox ? "inbox" : ""}`} onClick={() => onOpen(o.name)} onPointerEnter={() => setHover(o.name)} onPointerLeave={() => setHover(null)}>
                 {o.name}
               </button>
             </Html>
@@ -142,6 +165,22 @@ function Constellation({ names, onOpen, mobile, reduced }: Props) {
       })}
     </group>
   );
+}
+
+/**
+ * Touch rules for phones. The canvas allows normal vertical swipes (CSS touch-action: pan-y),
+ * so the page keeps scrolling. A sideways drag spins the map. Two fingers always spin the map,
+ * so the page stays put while both fingers are down.
+ */
+function TouchGuard() {
+  const el = useThree((s) => s.gl.domElement);
+  useEffect(() => {
+    const hold = (e: TouchEvent) => { if (e.touches.length >= 2 && e.cancelable) e.preventDefault(); };
+    el.addEventListener("touchstart", hold, { passive: false });
+    el.addEventListener("touchmove", hold, { passive: false });
+    return () => { el.removeEventListener("touchstart", hold); el.removeEventListener("touchmove", hold); };
+  }, [el]);
+  return null;
 }
 
 function Rig({ children, reduced }: { children: React.ReactNode; reduced: boolean }) {
@@ -168,7 +207,8 @@ export default function MemoryScene(props: Props) {
         <Orb mobile={mobile} reduced={reduced} />
         <Constellation {...props} />
       </Rig>
-      <OrbitControls enablePan={false} enableZoom={false} enableDamping dampingFactor={0.08} autoRotate={!reduced} autoRotateSpeed={0.5} rotateSpeed={0.7} minPolarAngle={Math.PI * 0.25} maxPolarAngle={Math.PI * 0.75} />
+      <TouchGuard />
+      <OrbitControls touches={{ ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_ROTATE }} enablePan={false} enableZoom={false} enableDamping dampingFactor={0.08} autoRotate={!reduced} autoRotateSpeed={0.5} rotateSpeed={0.7} minPolarAngle={Math.PI * 0.25} maxPolarAngle={Math.PI * 0.75} />
     </Canvas>
   );
 }

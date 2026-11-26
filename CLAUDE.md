@@ -4,10 +4,21 @@ Personal agency workspace and AI assistant (Jarvis) for Matt. Full spec: `AGENCY
 
 ## How to work
 
-- Work one phase at a time. At the end of each phase: commit, push, give a short summary plus what Matt must do (keys, logins, clicks). Wait for his go ahead before the next phase.
-- Ask Matt to confirm anything uncertain before building it.
+Matt is very busy. These rules override anything older.
+
+- Do everything yourself. Keep Matt's manual steps to the absolute minimum.
+- Choose sensible defaults instead of asking questions. Ask only when a choice is costly or hard to undo.
+- Work one phase at a time. At the end of each phase: build, deploy, run the remote migration, open a PR into `main`, and merge it yourself once the build passes. Matt reviews the live site, not the PR.
+- After merging, give a short summary and the live URL, then wait for Matt's verdict on the live site before starting the next phase.
+- If something is needed from Matt (a login, key or file), put ONE short checklist at the very end of the message with the exact clicks. Never spread steps through the message.
 - Free tiers only. No paid plans or new subscriptions. The one exception is pay per use AI through OpenRouter, with a hard monthly cap (start at US$10).
-- Do not open a pull request unless asked. Matt merges himself.
+- Known manual steps left for Matt: (1) Phase 3 needs his ad export CSVs, which he drops into the chat. (2) R2 needs a one time enable by the account owner in Cloudflare: Storage and databases, then R2, then enable. (3) Opening each live site and saying whether it is good.
+
+## Desktop app (future phase, standing requirements)
+
+- One Windows installer that Matt double clicks once. It sets up everything: the app, Whisper (speech to text), the wake word, and Kokoro (text to speech) started automatically in the background. After that the app updates itself.
+- Jarvis voice ships with a ready tuned default preset that sounds good from day one. A tuning panel exists but Matt never has to use it.
+- Stay on free tools. Build and release the installer from GitHub (Actions and Releases) so Matt has nothing to run.
 
 ## Secrets and config
 
@@ -45,13 +56,13 @@ Personal agency workspace and AI assistant (Jarvis) for Matt. Full spec: `AGENCY
 
 0 Setup. 1 Home screen with sample data. 2 Clients, tasks and reports. 3 Ad spend (CSV upload, R2). 4 Jarvis and multi model AI through OpenRouter, spend cap, `ai_usage` logging. 5 News radar (weekday cron `50 20 * * 0-4` UTC). 6 Inbox (Gmail and Outlook, plan with Matt first). 7 Phone app.
 
-Status: Phases 0, 1 and 1.5 (3D and motion pass) done. Next is Phase 2, once Matt gives the go ahead.
+Status: Phases 0, 1, 1.5 and 2 done. Phase 2 (clients, tasks, reports in D1) awaits Matt's check. Next is Phase 3, once Matt gives the go ahead.
 
 ## Commands
 
 - `npm run build` typechecks and builds. `npm run deploy` builds and deploys.
 - `npm run db:migrate:remote` applies D1 migrations to the live database.
-- Sample data for the UI lives in `src/web/seed.ts` until each phase wires real D1 data.
+- Clients, tasks and reports are live in D1 (`/api/state` plus CRUD routes in `src/worker/index.ts`, schedule maths in `src/shared/schedule.ts`). Ad spend, news and email still use sample data in `src/web/seed.ts` until their phases.
 
 ## Front end structure (Phase 1.5)
 
@@ -59,3 +70,10 @@ Status: Phases 0, 1 and 1.5 (3D and motion pass) done. Next is Phase 2, once Mat
 - Motion: Framer Motion. The 3D Memory map (three.js, react three fiber) lives in `src/web/scene/` and loads lazily. `HeroField.tsx` is the 2D canvas hero.
 - Respect `prefers-reduced-motion` in every new animation. Phones get lighter scenes.
 - Anything waiting on a later phase shows a "Coming in Phase X" note or a friendly toast. No dead buttons.
+
+## Phase 1.5 review fixes (done)
+
+- Memory map labels fade on the far side of the orb (`fadeLabel` in `scene/MemoryScene.tsx`).
+- Touch: `.scene` divs and canvas use `touch-action: pan-y`, so vertical swipes scroll the page. Sideways drags and two finger gestures spin the map (`TouchGuard`). OrbitControls sets inline `touch-action: none` on r3f's container div, so the CSS rule needs `!important` and must cover `.scene div`.
+- Hero ribbons and dust live in a bottom band set by `--band` on `.hello`, below all text.
+- Overview order: AI models, Connectors, Reports due, Memory map (full width), Today beside News radar, Ad spend. Use `tab-full` on a card that would sit alone in a row at tablet width.
