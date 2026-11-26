@@ -224,3 +224,28 @@ th.num { text-align: right; }
 .card-wrap.stretch .grow { flex: 1; min-height: 0; }
 .subhead { margin: 18px 0 4px; }
 .list.quiet .when { color: var(--muted); }
+
+/* Phase 3 ad spend */
+.sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); border: 0; }
+.drop { position: relative; display: grid; justify-items: center; gap: 8px; text-align: center; padding: 36px 20px; border: 1px dashed var(--muted); border-radius: 14px; cursor: pointer; color: var(--second); transition: border-color .2s, background .2s; }
+.drop:hover, .drop.over, .drop:focus-within { border-color: var(--amber); background: rgba(242,169,59,.05); }
+.drop strong { font-weight: 500; color: var(--text); }
+.drop .muted { max-width: 420px; }
+.summary-line { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 16px; margin: 0; }
+.summary-line .amber { font-family: "JetBrains Mono", monospace; }
+.map { border: 1px solid var(--divider); border-radius: 14px; padding: 0 16px; }
+.map summary { min-height: 44px; display: flex; align-items: center; cursor: pointer; color: var(--second); }
+.map[open] summary { color: var(--amber); }
+.map-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; padding: 4px 0 16px; }
+table.preview { min-width: 520px; }
+table.preview td { padding: 10px 12px 10px 0; font-size: 14px; }
+.month-pills { list-style: none; padding: 0; display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 16px; }
+.cur-block + .cur-block { margin-top: 18px; padding-top: 18px; border-top: 1px solid var(--divider); }
+.budget-edit { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; min-width: 260px; }
+.budget-edit input { width: 120px; min-height: 44px; padding: 0 14px; border-radius: 999px; background: var(--bg); border: 1px solid var(--border); outline: 0; }
+.budget-edit input:focus { border-color: var(--amber); }
+.tabs { display: inline-flex; gap: 6px; }
+.import-row { align-items: flex-start; flex-wrap: wrap; }
+.import-row > span:first-child { flex: 1; min-width: 220px; overflow-wrap: anywhere; }
+.col .label { min-height: 12px; }
+td.muted, th.muted { display: table-cell; }

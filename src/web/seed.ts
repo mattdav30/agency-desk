@@ -35,15 +35,6 @@ export const aiModels = {
   spendThisMonth: 3.4,
 };
 
-export const adSpend = [
-  { client: "Woodside", channels: "Google Ads, Meta", spent: 8420, budget: 12000 },
-  { client: "APCH Phase 2", channels: "StackAdapt, Meta", spent: 5180, budget: 9000 },
-  { client: "QPS ASB", channels: "Meta", spent: 3960, budget: 6000 },
-  { client: "ABS Campaign", channels: "Google Ads", spent: 6850, budget: 7500 },
-  { client: "Amicus Intelligence", channels: "Google Ads, StackAdapt", spent: 2210, budget: 5000 },
-  { client: "Greg Fleming MP", channels: "Meta", spent: 1480, budget: 2500 },
-];
-
 export const newsTopics = ["Coal Australia"];
 
 export const news = [
@@ -61,11 +52,6 @@ export const clientNotes: Record<string, { channels: string; note: string; next:
   "Greg Fleming MP": { channels: "Meta", note: "Monthly digital report and social presence.", next: "Monthly report on Friday" },
   "Coal Australia page": { channels: "Organic social", note: "Social page fed by the news radar.", next: "Review today's story ideas" },
 };
-
-export const monthlySpend = [
-  { month: "Jun", value: 21400 }, { month: "Jul", value: 24800 }, { month: "Aug", value: 23100 },
-  { month: "Sep", value: 27600 }, { month: "Oct", value: 29900 }, { month: "Nov", value: 28100 },
-];
 
 export const emails = [
   { id: 1, from: "Amicus Intelligence", subject: "Daily report format change", time: "8:12 am", client: "Amicus Intelligence", unread: true },

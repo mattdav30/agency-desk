@@ -6,10 +6,11 @@ import { useApp } from "../ctx";
 import { Bar, Card, CountUp, Reveal } from "../ui";
 import { HeroField } from "../HeroField";
 import { MemoryMap } from "../MemoryMap";
-import { adSpend, aiModels, connectors, emails, news as seedNews, newsTopics as seedTopics } from "../seed";
+import { aiModels, connectors, emails, news as seedNews, newsTopics as seedTopics } from "../seed";
+import { PaceCell } from "./AdSpend";
 import { TaskForm } from "../forms";
 import { TaskList } from "../tasklist";
-import { dueLabel, greeting, money, monthProgress, paceStatus } from "../util";
+import { dueLabel, greeting, money, monthName, symbol } from "../util";
 import { href } from "../hooks";
 
 const stateLabel = { on: "On", setup: "Needs setup", missing: "Missing" } as const;
@@ -23,7 +24,7 @@ const connectorHint: Record<string, string> = {
 
 export function Overview() {
   const now = useMemo(() => new Date(), []);
-  const { tasks, clients, reports, today, ready, notify, openChat } = useApp();
+  const { tasks, clients, reports, today, ready, notify, openChat, ads } = useApp();
   const [adding, setAdding] = useState(false);
   const [topics, setTopics] = useState(seedTopics);
   const [topic, setTopic] = useState(seedTopics[0]);
@@ -37,7 +38,6 @@ export function Overview() {
   const upNext = tasks.filter((t) => !t.done && t.dueDate && t.dueDate > today).slice(0, 4);
   const waiting = emails.filter((e) => e.unread).length;
   const cap = config.monthlySpendCapUsd;
-  const expected = monthProgress(now);
 
   const submitTopic = (e: FormEvent) => {
     e.preventDefault();
@@ -62,7 +62,7 @@ export function Overview() {
             <CountUp to={open} /> open tasks, <CountUp to={dueToday} /> {dueToday === 1 ? "report" : "reports"} due today and <CountUp to={waiting} /> waiting emails.
           </p>
         </Reveal>
-        <Reveal delay={0.3}><p className="sample">Clients, tasks and reports are saved. Ad spend, news and email show sample data until their phases.</p></Reveal>
+        <Reveal delay={0.3}><p className="sample">Clients, tasks, reports and ad spend come from your saved data. News and email show sample data until their phases.</p></Reveal>
       </section>
 
       <div className="grid">
@@ -167,29 +167,30 @@ export function Overview() {
           )}
         </Card>
 
-        <Card title="Ad spend" label="This month" className="full" delay={0.05} action={<a className="more" href={href("ad-spend")}>Details</a>}>
-          <div className="scroll">
-            <table>
-              <thead><tr><th>Client</th><th>Channels</th><th className="num">Spent</th><th className="num">Budget</th><th>Pace</th></tr></thead>
-              <tbody>
-                {adSpend.map((r, i) => (
-                  <tr key={r.client}>
-                    <td><a className="cell-link" href={href("clients", r.client)}><strong>{r.client}</strong></a></td>
-                    <td className="muted">{r.channels}</td>
-                    <td className="num"><CountUp to={r.spent} prefix="$" /></td>
-                    <td className="num">{money(r.budget)}</td>
-                    <td>
-                      <div className="pace">
-                        <Bar value={r.spent / r.budget} marker={expected} delay={i * 0.08} />
-                        <span className="label">{paceStatus(r.spent / r.budget, expected)}</span>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <button className="pill ghost mt" onClick={() => openChat("How is Woodside pacing?")}>Ask Jarvis about pace</button>
+        <Card title="Ad spend" label={ads ? monthName(ads.month, true) : "This month"} className="full" delay={0.05} action={<a className="more" href={href("ad-spend")}>Details</a>}>
+          {!ads ? <p className="empty">Loading</p> : ads.clients.length === 0 ? (
+            <p className="soon"><span className="label">Start here</span>Upload an export on the <a className="cell-link amber" href={href("ad-spend")}>Ad spend page</a> and your spend and pace appear here.</p>
+          ) : (
+            <>
+              <div className="scroll">
+                <table>
+                  <thead><tr><th>Client</th><th>Channels</th><th className="num">Spent</th><th className="num">Budget</th><th>Pace</th></tr></thead>
+                  <tbody>
+                    {ads.clients.map((r, i) => (
+                      <tr key={r.id}>
+                        <td><a className="cell-link" href={href("clients", r.name)}><strong>{r.name}</strong></a></td>
+                        <td className="muted">{r.channels.join(", ") || "None"}</td>
+                        <td className="num"><CountUp to={r.spent} prefix={symbol(r.currency)} decimals={2} /></td>
+                        <td className="num">{r.budget ? money(r.budget, r.currency) : <a className="cell-link amber" href={href("ad-spend")}>Set budget</a>}</td>
+                        <td><PaceCell c={r} expected={ads.expected} showMarker delay={i * 0.08} /></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <button className="pill ghost mt" onClick={() => openChat(`How is ${ads.clients[0].name} pacing?`)}>Ask Jarvis about pace</button>
+            </>
+          )}
         </Card>
       </div>
     </>

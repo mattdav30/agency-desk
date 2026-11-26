@@ -17,6 +17,9 @@
       "migrations_dir": "migrations"
     }
   ],
+  "r2_buckets": [
+    { "binding": "FILES", "bucket_name": "agency-desk-files" }
+  ],
   "kv_namespaces": [
     { "binding": "KV", "id": "438baa772aba445193ac9a8283593cc0" }
   ]

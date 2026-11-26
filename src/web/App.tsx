@@ -6,7 +6,8 @@ import { ChatPanel, JarvisBar } from "./Jarvis";
 import { href, routeLabels, routes, useRoute } from "./hooks";
 import { Overview } from "./pages/Overview";
 import { Clients } from "./pages/Clients";
-import { AdSpendPage, InboxPage, ReportsPage } from "./pages/OtherPages";
+import { InboxPage, ReportsPage } from "./pages/OtherPages";
+import { AdSpendPage } from "./pages/AdSpend";
 
 function Shell() {
   const route = useRoute();
