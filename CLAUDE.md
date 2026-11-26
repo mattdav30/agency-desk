@@ -4,10 +4,21 @@ Personal agency workspace and AI assistant (Jarvis) for Matt. Full spec: `AGENCY
 
 ## How to work
 
-- Work one phase at a time. At the end of each phase: commit, push, give a short summary plus what Matt must do (keys, logins, clicks). Wait for his go ahead before the next phase.
-- Ask Matt to confirm anything uncertain before building it.
+Matt is very busy. These rules override anything older.
+
+- Do everything yourself. Keep Matt's manual steps to the absolute minimum.
+- Choose sensible defaults instead of asking questions. Ask only when a choice is costly or hard to undo.
+- Work one phase at a time. At the end of each phase: build, deploy, run the remote migration, open a PR into `main`, and merge it yourself once the build passes. Matt reviews the live site, not the PR.
+- After merging, give a short summary and the live URL, then wait for Matt's verdict on the live site before starting the next phase.
+- If something is needed from Matt (a login, key or file), put ONE short checklist at the very end of the message with the exact clicks. Never spread steps through the message.
 - Free tiers only. No paid plans or new subscriptions. The one exception is pay per use AI through OpenRouter, with a hard monthly cap (start at US$10).
-- Do not open a pull request unless asked. Matt merges himself.
+- Known manual steps left for Matt: (1) Phase 3 needs his ad export CSVs, which he drops into the chat. (2) R2 needs a one time enable by the account owner in Cloudflare: Storage and databases, then R2, then enable. (3) Opening each live site and saying whether it is good.
+
+## Desktop app (future phase, standing requirements)
+
+- One Windows installer that Matt double clicks once. It sets up everything: the app, Whisper (speech to text), the wake word, and Kokoro (text to speech) started automatically in the background. After that the app updates itself.
+- Jarvis voice ships with a ready tuned default preset that sounds good from day one. A tuning panel exists but Matt never has to use it.
+- Stay on free tools. Build and release the installer from GitHub (Actions and Releases) so Matt has nothing to run.
 
 ## Secrets and config
 
