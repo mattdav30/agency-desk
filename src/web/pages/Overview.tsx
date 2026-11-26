@@ -34,6 +34,7 @@ export function Overview() {
   const open = tasks.filter((t) => !t.done).length;
   const dueToday = reports.filter((r) => r.days === 0 && !r.doneToday).length;
   const todays = tasks.filter((t) => (t.done ? t.dueDate === today : !t.dueDate || t.dueDate <= today));
+  const upNext = tasks.filter((t) => !t.done && t.dueDate && t.dueDate > today).slice(0, 4);
   const waiting = emails.filter((e) => e.unread).length;
   const cap = config.monthlySpendCapUsd;
   const expected = monthProgress(now);
@@ -93,7 +94,7 @@ export function Overview() {
           </ul>
         </Card>
 
-        <Card title="Reports due" label="This week" delay={0.16} action={<a className="more" href={href("reports")}>All reports</a>}>
+        <Card title="Reports due" label="This week" className="tab-full" delay={0.16} action={<a className="more" href={href("reports")}>All reports</a>}>
           {reports.length ? (
             <ul className="list">
               {reports.slice(0, 5).map((r) => {
@@ -111,16 +112,24 @@ export function Overview() {
           ) : <p className="empty">{ready ? "No reports yet. Add one on the Reports page." : "Loading"}</p>}
         </Card>
 
-        <Card title="Memory map" label={`${clients.length} clients`} className="wide" delay={0.05} tilt={false}>
+        <Card title="Memory map" label={`${clients.length} clients`} className="full" delay={0.05} tilt={false}>
           <MemoryMap />
         </Card>
 
-        <Card title="Today" label={`${open} open`} delay={0.1}>
-          <TaskList tasks={todays} empty={ready ? "Nothing on for today. Add a task to start." : "Loading"} />
+        <Card title="Today" label={`${open} open`} className="stretch tab-full" delay={0.1}>
+          <div className="grow">
+            <TaskList tasks={todays} empty={ready ? "Nothing on for today. Add a task to start." : "Loading"} />
+            {upNext.length > 0 && (
+              <>
+                <p className="label subhead">Up next</p>
+                <TaskList tasks={upNext} empty="" />
+              </>
+            )}
+          </div>
           {adding ? (
             <TaskForm onDone={() => setAdding(false)} />
           ) : (
-            <button className="btn" onClick={() => setAdding(true)}><Icon name="plus" size={16} />Add task</button>
+            <div><button className="btn" onClick={() => setAdding(true)}><Icon name="plus" size={16} />Add task</button></div>
           )}
         </Card>
 

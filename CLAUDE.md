@@ -59,3 +59,10 @@ Status: Phases 0, 1, 1.5 and 2 done. Phase 2 (clients, tasks, reports in D1) awa
 - Motion: Framer Motion. The 3D Memory map (three.js, react three fiber) lives in `src/web/scene/` and loads lazily. `HeroField.tsx` is the 2D canvas hero.
 - Respect `prefers-reduced-motion` in every new animation. Phones get lighter scenes.
 - Anything waiting on a later phase shows a "Coming in Phase X" note or a friendly toast. No dead buttons.
+
+## Phase 1.5 review fixes (done)
+
+- Memory map labels fade on the far side of the orb (`fadeLabel` in `scene/MemoryScene.tsx`).
+- Touch: `.scene` divs and canvas use `touch-action: pan-y`, so vertical swipes scroll the page. Sideways drags and two finger gestures spin the map (`TouchGuard`). OrbitControls sets inline `touch-action: none` on r3f's container div, so the CSS rule needs `!important` and must cover `.scene div`.
+- Hero ribbons and dust live in a bottom band set by `--band` on `.hello`, below all text.
+- Overview order: AI models, Connectors, Reports due, Memory map (full width), Today beside News radar, Ad spend. Use `tab-full` on a card that would sit alone in a row at tablet width.

@@ -2,7 +2,11 @@ import { useEffect, useRef } from "react";
 import { useInView } from "framer-motion";
 import { useIsMobile, useReduced } from "./hooks";
 
-/** Flowing ribbons of light and drifting dust, drawn on a 2D canvas behind the greeting. */
+/**
+ * Flowing ribbons of light and drifting dust, drawn on a 2D canvas.
+ * Everything stays inside a band at the bottom of the hero (height set by --band in CSS),
+ * below the greeting text, so no line of text ever sits on top of a ribbon.
+ */
 export function HeroField() {
   const wrap = useRef<HTMLDivElement>(null);
   const cvs = useRef<HTMLCanvasElement>(null);
@@ -18,7 +22,7 @@ export function HeroField() {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
     const dpr = Math.min(window.devicePixelRatio || 1, mobile ? 1 : 1.5);
-    let w = 0, h = 0, raf = 0;
+    let w = 0, h = 0, band = 140, raf = 0;
     const mouse = { x: 0.5, y: 0.5, tx: 0.5, ty: 0.5 };
     const ribbons = [
       { color: "242,169,59", amp: 46, freq: 1.3, speed: 0.22, y: 0.38, phase: 0 },
@@ -33,12 +37,15 @@ export function HeroField() {
 
     const size = () => {
       w = box.clientWidth; h = box.clientHeight;
+      band = Math.min(h, parseFloat(getComputedStyle(box).getPropertyValue("--band")) || 140);
       canvas.width = w * dpr; canvas.height = h * dpr;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     };
-    const yAt = (r: (typeof ribbons)[number], x: number, t: number) =>
-      h * r.y + Math.sin(x * r.freq * 5 + t * r.speed * 6 + r.phase) * r.amp * (0.6 + mouse.y * 0.8) +
-      Math.sin(x * r.freq * 11 - t * r.speed * 4) * r.amp * 0.25;
+    const yAt = (r: (typeof ribbons)[number], x: number, t: number) => {
+      const k = band / 300; // wave height scales with the band
+      return h - band + band * r.y + Math.sin(x * r.freq * 5 + t * r.speed * 6 + r.phase) * r.amp * k * (0.6 + mouse.y * 0.8) +
+        Math.sin(x * r.freq * 11 - t * r.speed * 4) * r.amp * k * 0.25;
+    };
 
     const draw = (time: number) => {
       const t = time / 1000;
@@ -67,8 +74,9 @@ export function HeroField() {
       }
       for (const d of dust) {
         d.y -= d.s * 0.0016 * d.z; if (d.y < -0.02) { d.y = 1.02; d.x = Math.random(); }
-        const px = (d.x + (mouse.x - 0.5) * 0.04 * d.z) * w, py = d.y * h;
-        ctx.fillStyle = `rgba(${d.c},${0.15 + d.z * 0.4})`;
+        const px = (d.x + (mouse.x - 0.5) * 0.04 * d.z) * w, py = h - band + d.y * band;
+        const edge = Math.max(0, Math.min(1, d.y * 6, (1 - d.y) * 6)); // fade in and out at the band edges
+        ctx.fillStyle = `rgba(${d.c},${(0.15 + d.z * 0.4) * edge})`;
         ctx.beginPath(); ctx.arc(px, py, d.z * 1.4, 0, Math.PI * 2); ctx.fill();
       }
       ctx.globalCompositeOperation = "source-over";

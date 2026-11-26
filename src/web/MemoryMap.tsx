@@ -34,7 +34,7 @@ export function MemoryMap({ onOpen }: { onOpen?: (name: string) => void }) {
             </Suspense>
           </Boundary>
         ) : <Poster text="Memory map" />}
-        <p className="scene-hint label">{mobile ? "Drag to spin. Tap a node." : "Drag to spin. Click a node."}</p>
+        <p className="scene-hint label">{mobile ? "Swipe sideways to spin. Tap a node." : "Drag to spin. Click a node."}</p>
       </div>
       <ul className="chips map-chips">
         {names.map((n) => (

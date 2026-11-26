@@ -76,7 +76,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const next = !cur.done;
       set({ tasks: data.tasks.map((t) => (t.id === id ? { ...t, done: next } : t)) });
       try { await api(`/tasks/${id}`, "PATCH", { done: next }); }
-      catch { set({ tasks: data.tasks }); notify("That tick could not save. Try again."); }
+      catch { set({ tasks: data.tasks }); notify("That tick needs another try."); }
     },
     addTask: (input) => attempt(async () => {
       const t = await api<Task>("/tasks", "POST", input);
@@ -92,7 +92,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const before = data.tasks;
       set({ tasks: before.filter((t) => t.id !== id) });
       try { await api(`/tasks/${id}`, "DELETE"); }
-      catch { set({ tasks: before }); notify("That task could not be deleted. Try again."); }
+      catch { set({ tasks: before }); notify("That task is still here. Try deleting again."); }
     },
 
     addClient: (input) => attempt(async () => {
@@ -130,13 +130,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const before = data.reports;
       set({ reports: before.filter((r) => r.id !== id) });
       try { await api(`/reports/${id}`, "DELETE"); }
-      catch { set({ reports: before }); notify("That report could not be deleted. Try again."); }
+      catch { set({ reports: before }); notify("That report is still here. Try deleting again."); }
     },
     setReportDone: async (id, done) => {
       try {
         const r = await api<Report>(`/reports/${id}/done`, "POST", { done });
         setData((d) => ({ ...d, reports: d.reports.map((x) => (x.id === id ? r : x)).sort(byDue) }));
-      } catch { notify("That mark could not save. Try again."); }
+      } catch { notify("That mark needs another try."); }
     },
 
     openChat: (prefill = "") => { setChatPrefill(prefill); setChatOpen(true); },
