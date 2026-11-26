@@ -1,5 +1,6 @@
 import { useState, type FormEvent, type ReactNode } from "react";
 import { Icon } from "./icons";
+import { CURRENCIES } from "../shared/ads";
 import { useApp, type Client, type ClientInput, type Report, type ReportInput, type Task, type TaskInput } from "./ctx";
 
 const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
@@ -31,7 +32,7 @@ export function ConfirmDelete({ onConfirm, label = "Delete", small = true }: { o
 
 export function ClientForm({ client, onDone }: { client?: Client; onDone: (saved?: Client) => void }) {
   const { addClient, updateClient } = useApp();
-  const [v, setV] = useState<ClientInput>({ name: client?.name ?? "", channels: client?.channels ?? "", note: client?.note ?? "" });
+  const [v, setV] = useState<ClientInput>({ name: client?.name ?? "", channels: client?.channels ?? "", note: client?.note ?? "", currency: client?.currency ?? "AUD" });
   const [busy, setBusy] = useState(false);
   const submit = async (e: FormEvent) => {
     e.preventDefault();
@@ -43,6 +44,11 @@ export function ClientForm({ client, onDone }: { client?: Client; onDone: (saved
     <form className="form" onSubmit={submit}>
       <Field label="Name"><input autoFocus required value={v.name} onChange={(e) => setV({ ...v, name: e.target.value })} maxLength={80} /></Field>
       <Field label="Channels"><input value={v.channels} onChange={(e) => setV({ ...v, channels: e.target.value })} placeholder="Google Ads, Meta" maxLength={200} /></Field>
+      <Field label="Ad spend currency">
+        <select value={v.currency} onChange={(e) => setV({ ...v, currency: e.target.value })}>
+          {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
+        </select>
+      </Field>
       <Field label="Notes"><textarea rows={3} value={v.note} onChange={(e) => setV({ ...v, note: e.target.value })} maxLength={500} /></Field>
       <Actions busy={busy} submit={client ? "Save client" : "Add client"} onCancel={() => onDone()} />
     </form>

@@ -3,7 +3,9 @@ import { AnimatePresence, motion } from "framer-motion";
 import { config } from "../config";
 import { Icon } from "./icons";
 import { useApp } from "./ctx";
-import { adSpend } from "./seed";
+import type { Ads } from "./api";
+import { money, monthName } from "./util";
+import { paceWord } from "../shared/ads";
 import type { Report, Task } from "./api";
 
 const modelNotes: Record<string, string> = {
@@ -34,25 +36,27 @@ export function JarvisBar() {
 
 type Msg = { role: "user" | "assistant"; text: string };
 
-function answer(q: string, open: Task[], reports: Report[], today: string, model: string): string {
+function answer(q: string, open: Task[], reports: Report[], today: string, model: string, ads: Ads | null): string {
   const s = q.toLowerCase();
   if (s.includes("due") || s.includes("today")) {
     const t = open.filter((x) => !x.dueDate || x.dueDate <= today).map((x) => x.title).join(", ") || "No open tasks";
     const r = reports.filter((x) => x.days === 0 && !x.doneToday).map((x) => `${x.name} for ${x.client || "no client"}${x.at ? " at " + x.at : ""}`).join(", ") || "no reports";
     return `Tasks: ${t}. Reports due today: ${r}.`;
   }
-  const hit = adSpend.find((c) => s.includes(c.client.toLowerCase().split(" ")[0]));
+  const hit = ads?.clients.find((c) => c.name.toLowerCase().split(" ").some((w) => w.length > 2 && s.includes(w)));
   if (s.includes("pac") || s.includes("spend") || hit) {
-    const c = hit ?? adSpend[0];
-    return `From sample ad spend data. ${c.client} has spent $${c.spent.toLocaleString("en-AU")} of $${c.budget.toLocaleString("en-AU")} this month.`;
+    if (!ads || !ads.clients.length) return "No ad spend is saved yet. Upload an export on the Ad spend page and I can report on pace.";
+    const c = hit ?? ads.clients[0];
+    const where = `${c.name} has spent ${money(c.spent, c.currency, 2)} in ${monthName(ads.month, true)}`;
+    return c.budget ? `${where} of a ${money(c.budget, c.currency)} budget. Pace reads ${paceWord(c.spent, c.budget, ads.expected).toLowerCase()}.` : `${where}. Add a budget on the Ad spend page to see pace.`;
   }
   const label = config.models.find((m) => m.id === model)?.label ?? model;
   return `${label} is selected. Open ended answers go live in Phase 4. Try asking what is due today or how Woodside is pacing.`;
 }
 
 export function ChatPanel() {
-  const { chatOpen, closeChat, chatPrefill, tasks, reports, today, model } = useApp();
-  const [msgs, setMsgs] = useState<Msg[]>([{ role: "assistant", text: "Hi Matt. I am Jarvis. Full conversations arrive in Phase 4. Until then I answer a few questions from your tasks and reports." }]);
+  const { chatOpen, closeChat, chatPrefill, tasks, reports, today, model, ads } = useApp();
+  const [msgs, setMsgs] = useState<Msg[]>([{ role: "assistant", text: "Hi Matt. I am Jarvis. Full conversations arrive in Phase 4. Until then I answer a few questions from your tasks, reports and ad spend." }]);
   const [text, setText] = useState("");
   const end = useRef<HTMLDivElement>(null);
   const input = useRef<HTMLInputElement>(null);
@@ -60,7 +64,7 @@ export function ChatPanel() {
   const send = (q: string) => {
     if (!q.trim()) return;
     const open = tasks.filter((t) => !t.done);
-    setMsgs((m) => [...m, { role: "user", text: q }, { role: "assistant", text: answer(q, open, reports, today, model) }]);
+    setMsgs((m) => [...m, { role: "user", text: q }, { role: "assistant", text: answer(q, open, reports, today, model, ads) }]);
   };
 
   useEffect(() => {

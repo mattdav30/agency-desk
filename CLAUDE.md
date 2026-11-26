@@ -56,13 +56,14 @@ Matt is very busy. These rules override anything older.
 
 0 Setup. 1 Home screen with sample data. 2 Clients, tasks and reports. 3 Ad spend (CSV upload, R2). 4 Jarvis and multi model AI through OpenRouter, spend cap, `ai_usage` logging. 5 News radar (weekday cron `50 20 * * 0-4` UTC). 6 Inbox (Gmail and Outlook, plan with Matt first). 7 Phone app.
 
-Status: Phases 0, 1, 1.5 and 2 done. Phase 2 (clients, tasks, reports in D1) awaits Matt's check. Next is Phase 3, once Matt gives the go ahead.
+Status: Phases 0, 1, 1.5, 2 and 3 done. Phase 3 (ad spend) awaits Matt's check on the live site. Next is Phase 4 (Jarvis and multi model AI), once Matt says Phase 3 is good.
 
 ## Commands
 
 - `npm run build` typechecks and builds. `npm run deploy` builds and deploys.
 - `npm run db:migrate:remote` applies D1 migrations to the live database.
-- Clients, tasks and reports are live in D1 (`/api/state` plus CRUD routes in `src/worker/index.ts`, schedule maths in `src/shared/schedule.ts`). Ad spend, news and email still use sample data in `src/web/seed.ts` until their phases.
+- Ad spend is live: `src/shared/ads.ts` reads exports (UTF 16 and UTF 8 CSV, TSV, XLSX), guesses columns, detects LinkedIn and Meta, and splits ranges across months. API in `src/worker/ads.ts`. Raw files go to R2 (`FILES` binding, bucket `agency-desk-files`). Column mappings and account to client matches are remembered in `column_mappings` and `settings`. Each client has one currency and amounts are never converted. A newer upload replaces earlier rows from the same source and client on the same dates.
+- Clients, tasks and reports are live in D1 (`/api/state` plus CRUD routes in `src/worker/index.ts`, schedule maths in `src/shared/schedule.ts`). News and email still use sample data in `src/web/seed.ts` until their phases.
 
 ## Front end structure (Phase 1.5)
 

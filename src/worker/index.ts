@@ -1,12 +1,14 @@
 import { Hono } from "hono";
 import { config } from "../config";
+import { ads } from "./ads";
+import { CURRENCIES } from "../shared/ads";
 import { describeSchedule, diffDays, nextDue, todayIn, timeLabel, type Frequency } from "../shared/schedule";
 
 export type Env = {
   ASSETS: Fetcher;
   DB: D1Database;
   KV: KVNamespace;
-  FILES?: R2Bucket; // added in Phase 3
+  FILES: R2Bucket;
 };
 
 const app = new Hono<{ Bindings: Env }>();
@@ -29,7 +31,8 @@ async function body(c: any): Promise<Record<string, unknown>> {
   try { const b = await c.req.json(); return b && typeof b === "object" ? b : {}; } catch { return {}; }
 }
 
-type ClientRow = { id: number; name: string; channels: string; note: string; active: number };
+type ClientRow = { id: number; name: string; channels: string; note: string; currency: string; active: number };
+const currencyOr = (v: unknown, fallback: string) => (typeof v === "string" && CURRENCIES.includes(v.toUpperCase()) ? v.toUpperCase() : fallback);
 type TaskRow = { id: number; client_id: number | null; title: string; due_date: string | null; done: number };
 type ReportRow = { id: number; client_id: number | null; client_label: string | null; name: string; frequency: Frequency; due_time: string | null; due_day: number | null };
 
@@ -83,7 +86,7 @@ app.get("/api/state", async (c) => {
     .sort((a, b) => a.nextDue.localeCompare(b.nextDue) || a.at.localeCompare(b.at));
   return c.json({
     today,
-    clients: clients.results.map((x) => ({ id: x.id, name: x.name, channels: x.channels, note: x.note })),
+    clients: clients.results.map((x) => ({ id: x.id, name: x.name, channels: x.channels, note: x.note, currency: x.currency })),
     tasks: tasks.results.map(shapeTask),
     reports: reportList,
   });
@@ -97,8 +100,9 @@ app.post("/api/clients", async (c) => {
   if (!name) return bad(c, "Add a client name.");
   const dupe = await c.env.DB.prepare("select id from clients where lower(name) = lower(?) and active = 1").bind(name).first();
   if (dupe) return bad(c, "A client with that name exists already.");
-  const res = await c.env.DB.prepare("insert into clients (name, channels, note) values (?, ?, ?)").bind(name, str(b.channels, 200), str(b.note, 500)).run();
-  return c.json({ id: res.meta.last_row_id, name, channels: str(b.channels, 200), note: str(b.note, 500) }, 201);
+  const currency = currencyOr(b.currency, "AUD");
+  const res = await c.env.DB.prepare("insert into clients (name, channels, note, currency) values (?, ?, ?, ?)").bind(name, str(b.channels, 200), str(b.note, 500), currency).run();
+  return c.json({ id: res.meta.last_row_id, name, channels: str(b.channels, 200), note: str(b.note, 500), currency }, 201);
 });
 
 app.patch("/api/clients/:id", async (c) => {
@@ -108,19 +112,24 @@ app.patch("/api/clients/:id", async (c) => {
   if (!name) return bad(c, "Add a client name.");
   const dupe = await c.env.DB.prepare("select id from clients where lower(name) = lower(?) and active = 1 and id != ?").bind(name, id).first();
   if (dupe) return bad(c, "A client with that name exists already.");
-  const res = await c.env.DB.prepare("update clients set name = ?, channels = ?, note = ? where id = ?").bind(name, str(b.channels, 200), str(b.note, 500), id).run();
-  if (!res.meta.changes) return c.json({ error: "Client missing." }, 404);
-  return c.json({ id, name, channels: str(b.channels, 200), note: str(b.note, 500) });
+  const cur = await c.env.DB.prepare("select currency from clients where id = ?").bind(id).first<{ currency: string }>();
+  if (!cur) return c.json({ error: "Client missing." }, 404);
+  const currency = currencyOr(b.currency, cur.currency);
+  if (currency !== cur.currency && (await c.env.DB.prepare("select 1 x from ad_spend where client_id = ? limit 1").bind(id).first()))
+    return bad(c, `This client has spend saved in ${cur.currency}. Delete those imports on the Ad spend page before changing the currency.`);
+  await c.env.DB.prepare("update clients set name = ?, channels = ?, note = ?, currency = ? where id = ?").bind(name, str(b.channels, 200), str(b.note, 500), currency, id).run();
+  return c.json({ id, name, channels: str(b.channels, 200), note: str(b.note, 500), currency });
 });
 
 app.delete("/api/clients/:id", async (c) => {
-  // Tasks and reports stay in place and lose their client link (on delete set null).
+  // Tasks and reports stay in place and lose their client link (on delete set null). Its ad spend rows and budgets go with it.
   // Reports keep the client name as a label so they stay recognisable.
   const id = Number(c.req.param("id"));
   const client = await c.env.DB.prepare("select name from clients where id = ?").bind(id).first<{ name: string }>();
   if (!client) return c.json({ error: "Client missing." }, 404);
   await c.env.DB.batch([
     c.env.DB.prepare("update reports set client_label = ? where client_id = ?").bind(client.name, id),
+    c.env.DB.prepare("delete from ad_spend where client_id = ?").bind(id),
     c.env.DB.prepare("delete from clients where id = ?").bind(id),
   ]);
   return c.json({ ok: true });
@@ -221,6 +230,8 @@ app.post("/api/reports/:id/done", async (c) => {
   else await c.env.DB.prepare("insert or ignore into report_runs (report_id, run_date) values (?, ?)").bind(id, today).run();
   return c.json(await loadReport(c.env.DB, id, today));
 });
+
+app.route("/api", ads);
 
 app.onError((e, c) => {
   console.error(e.message);

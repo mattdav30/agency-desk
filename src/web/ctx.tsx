@@ -1,9 +1,9 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { api, type Client, type Report, type State, type Task } from "./api";
+import { api, type Ads, type Client, type Report, type State, type Task } from "./api";
 
 export type { Client, Report, Task } from "./api";
-export type ClientInput = { name: string; channels: string; note: string };
+export type ClientInput = { name: string; channels: string; note: string; currency: string };
 export type TaskInput = { title: string; clientId: number | null; dueDate?: string | null };
 export type ReportInput = { name: string; clientId: number | null; clientLabel: string; frequency: Report["frequency"]; dueTime: string; dueDay: number | null };
 
@@ -13,6 +13,8 @@ type Ctx = {
   clients: Client[];
   tasks: Task[];
   reports: Report[];
+  ads: Ads | null;
+  refreshAds: () => Promise<void>;
   toggleTask: (id: number) => Promise<void>;
   addTask: (input: TaskInput) => Promise<boolean>;
   updateTask: (id: number, input: TaskInput) => Promise<boolean>;
@@ -41,6 +43,7 @@ const byDue = (a: Report, b: Report) => a.nextDue.localeCompare(b.nextDue) || a.
 export function AppProvider({ children }: { children: ReactNode }) {
   const [data, setData] = useState<State>({ today: "", clients: [], tasks: [], reports: [] });
   const [ready, setReady] = useState(false);
+  const [ads, setAds] = useState<Ads | null>(null);
   const [toasts, setToasts] = useState<{ id: number; text: string }[]>([]);
   const [chatOpen, setChatOpen] = useState(false);
   const [chatPrefill, setChatPrefill] = useState("");
@@ -59,6 +62,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [notify]);
   useEffect(() => { load(); }, [load]);
 
+  const refreshAds = useCallback(async () => {
+    try { setAds(await api<Ads>("/ads")); } catch { /* the Ad spend page shows its own message */ }
+  }, []);
+  useEffect(() => { refreshAds(); }, [refreshAds]);
+
   const set = (patch: Partial<State>) => setData((d) => ({ ...d, ...patch }));
 
   // Run a save. On a problem, show the message and return the fallback.
@@ -67,7 +75,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }
 
   const value: Ctx = {
-    ready, today: data.today, clients: data.clients, tasks: data.tasks, reports: data.reports,
+    ready, today: data.today, clients: data.clients, tasks: data.tasks, reports: data.reports, ads, refreshAds,
     notify, chatOpen, chatPrefill, model, setModel,
 
     toggleTask: async (id) => {
@@ -112,7 +120,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }, false),
     removeClient: (id) => attempt(async () => {
       await api(`/clients/${id}`, "DELETE");
-      await load();
+      await Promise.all([load(), refreshAds()]);
       return true;
     }, false),
 
